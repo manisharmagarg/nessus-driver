@@ -1,0 +1,48 @@
+version: '3'
+services:
+  db:
+    restart: always
+    image: postgres
+    env_file: ~/work/Elliott/nessus-driver/config.env
+    networks:
+      - main
+
+  redis:
+    image: redis
+    networks:
+      - main
+
+  web:
+    restart: always
+    image: nessus-driver
+    env_file: ~/work/Elliott/nessus-driver/config.env
+    command: /nessus-driver/nessus-entrypoint.sh
+    volumes:
+      - scan_file:/nessus-driver/scanresults
+    ports:
+      - "2226:80"
+    links:
+      - db
+    depends_on:
+      - db
+    networks:
+      - main
+
+  celery: 
+    image: nessus-driver
+    command: celery -A tasks worker -B --loglevel=info
+    volumes:
+      - scan_file:/nessus-driver/scanresults
+    links:
+      - redis
+    depends_on:
+      - redis
+    networks:
+      - main
+
+networks:
+  main:
+    driver: bridge
+
+volumes:
+  scan_file:
